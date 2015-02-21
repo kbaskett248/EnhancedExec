@@ -69,7 +69,8 @@ class EnhancedAsyncProcess(AsyncProcess):
             if '$ResultFile' in shell_cmd:
                 if not self.results_file_path:
                     self.create_results_file()
-                shell_cmd = shell_cmd.replace('$ResultFile', results_file_path)
+                shell_cmd = shell_cmd.replace('$ResultFile',
+                                              self.results_file_path)
 
             if sys.platform == "win32":
                 # Use shell=True on Windows, so shell_cmd is passed through
@@ -125,39 +126,70 @@ class EnhancedAsyncProcess(AsyncProcess):
             threading.Thread(target=self.read_results_from_file).start()
 
     def read_results_from_file(self):
+        """
+        Loop while the process runs and read the results file. When the
+        process completes, delete the results file if it was created by this
+        process.
+
+        """
         with open(self.results_file_path, 'rb') as f:
-            # Setting arbitrary time limit at 60 seconds while testing
-            while (time.time()-self.start_time) < 60:
+            while True:
                 data = f.read()
 
                 if len(data) > 0:
                     if self.listener:
                         self.listener.on_data(self, data)
                 else:
-                    if self.killed:
+                    if self.killed or (not self.poll()):
                         break
-                    elif not self.poll():
-                        if self.listener:
-                            self.listener.on_finished(self)
-                        break
-                time.sleep(0.1)
-            else:
-                self.kill()
-        if self._delete_results_file:
-            os.remove(self.results_file_path)
-        self.results_file_path = None
-        self._delete_results_file = False
+                time.sleep(0.01)
+            logger.debug("exiting file read loop")
+
+        self.delete_results_file()
 
     def kill(self):
         super(EnhancedAsyncProcess, self).kill()
-        self.results_file_path = None
-        self._delete_results_file = False
+        self.delete_results_file()
 
     def create_results_file(self):
+        """
+        Create a temporary results file that can be monitored for results.
+        Set a flag indicating that the file should be deleted when the process
+        completes.
+
+        """
         self.results_file_path = tempfile.NamedTemporaryFile(
             suffix='.txt', delete=False).name
         logger.debug('Creating Results File: %s', self.results_file_path)
         self._delete_results_file = True
+
+    def delete_results_file(self):
+        """
+        If a temporary results file was created by this process, it will be
+        deleted here. The results_file_path attribute is also reset to None.
+
+        Loop for 5 seconds attempting to delete the file in case there are any
+        remaining handles.
+
+        """
+        if self._delete_results_file:
+            logger.debug("beginning file delete loop")
+            counter = 0
+            while counter <= 5:
+                try:
+                    os.remove(self.results_file_path)
+                except PermissionError:
+                    time.sleep(0.1)
+                    counter += 0.1
+                else:
+                    logger.debug("Deleting results file: %s",
+                                 self.results_file_path)
+                    break
+            else:
+                logger.warning("Failed to delete file after 5 seconds: %s",
+                               self.results_file_path)
+        self.results_file_path = None
+        self._delete_results_file = False
 
 
 class EnhancedExecCommand(ExecCommand):
@@ -220,6 +252,8 @@ class EnhancedExecCommand(ExecCommand):
             word_wrap=True, syntax="Packages/Text/Plain text.tmLanguage",
             # Catches "path", "shell", "startup_info", and "results_file_path"
             **kwargs):
+
+        logger.debug("kwargs: %s", kwargs)
 
         if kill:
             if self.proc:
