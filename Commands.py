@@ -261,6 +261,14 @@ class EnhancedExecCommand(ExecCommand):
 
         logger.debug("kwargs: %s", kwargs)
 
+        # clear the text_queue
+        self.text_queue_lock.acquire()
+        try:
+            self.text_queue.clear()
+            self.text_queue_proc = None
+        finally:
+            self.text_queue_lock.release()
+
         if kill:
             if self.proc:
                 self.proc.kill()
@@ -339,6 +347,12 @@ class EnhancedExecCommand(ExecCommand):
             # Forward kwargs to AsyncProcess
             self.proc = EnhancedAsyncProcess(
                 cmd, shell_cmd, merged_env, self, **kwargs)
+
+            self.text_queue_lock.acquire()
+            try:
+                self.text_queue_proc = self.proc
+            finally:
+                self.text_queue_lock.release()
         except Exception as e:
             self.append_string(None, str(e) + "\n")
             self.append_string(None, self.debug_text + "\n")
