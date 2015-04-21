@@ -66,11 +66,12 @@ class EnhancedAsyncProcess(AsyncProcess):
             proc_env[k] = os.path.expandvars(v)
 
         if shell_cmd:
-            if '$ResultFile' in shell_cmd:
+            if '<result_file>' in shell_cmd:
                 if not self.results_file_path:
                     self.create_results_file()
-                shell_cmd = shell_cmd.replace('$ResultFile',
+                shell_cmd = shell_cmd.replace('<result_file>',
                                               self.results_file_path)
+                logger.debug("shell_cmd: %s", shell_cmd)
 
             if sys.platform == "win32":
                 # Use shell=True on Windows, so shell_cmd is passed through
@@ -96,17 +97,17 @@ class EnhancedAsyncProcess(AsyncProcess):
                     startupinfo=startupinfo, env=proc_env, shell=False)
         else:
             if isinstance(cmd, str):
-                if '$ResultFile' in shell_cmd:
+                if '<result_file>' in shell_cmd:
                     if not self.results_file_path:
                         self.create_results_file()
-                    cmd = cmd.replace('$ResultFile', self.results_file_path)
+                    cmd = cmd.replace('<result_file>', self.results_file_path)
             else:
                 updated_cmd = []
                 for a in cmd:
-                    if '$ResultFile' in a:
+                    if '<result_file>' in a:
                         if not self.results_file_path:
                             self.create_results_file()
-                        a.replace('$ResultFile', self.results_file_path)
+                        a.replace('<result_file>', self.results_file_path)
                     updated_cmd.append(a)
                 cmd = updated_cmd
 
@@ -124,6 +125,9 @@ class EnhancedAsyncProcess(AsyncProcess):
 
         if self.results_file_path:
             threading.Thread(target=self.read_results_from_file).start()
+
+        if wait:
+            self.proc.wait(timeout=wait)
 
     def read_results_from_file(self):
         """
@@ -237,7 +241,7 @@ class EnhancedExecCommand(ExecCommand):
                 results. Defaults to "exex".
             results_file_path - Optional. Path to the file containing build
                 results. If not specified, a temporary file will be created
-                for any command containing "$ResultFile".
+                for any command containing "<result_file>".
             quiet - Optional. Suppresses output associated with the build.
             word_wrap - Optional. Sets word wrap for the results view. Defaults
                 to True.
