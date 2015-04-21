@@ -31,7 +31,8 @@ class EnhancedAsyncProcess(AsyncProcess):
                  # "shell" is an option in build systems
                  shell=False,
                  # "results_file_path" is an option in build systems
-                 results_file_path=None):
+                 results_file_path=None,
+                 wait=None):
 
         if not shell_cmd and not cmd:
             raise ValueError("shell_cmd or cmd is required")
