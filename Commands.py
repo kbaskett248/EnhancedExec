@@ -203,8 +203,9 @@ class EnhancedExecCommand(ExecCommand):
 
     Improvements:
      - Can read command results from a results file.
-     - Can specify the name of an output panel.
      - Can disable startupinfo
+     - Can specify that the called process should finish before returning
+     - Can specify an initial message to put in the build window
 
     Keyword arguments:
         Commands:
@@ -238,8 +239,6 @@ class EnhancedExecCommand(ExecCommand):
                 view.
             encoding - Optional. Output encoding of cmd. Must be a valid Python
                 encoding. Defaults to UTF-8.
-            output_panel - Optional. Name of the panel to use for displaying
-                results. Defaults to "exex".
             results_file_path - Optional. Path to the file containing build
                 results. If not specified, a temporary file will be created
                 for any command containing "<result_file>".
@@ -256,7 +255,7 @@ class EnhancedExecCommand(ExecCommand):
             output_panel="exec", results_file_path=None, quiet=False,
             word_wrap=True, syntax="Packages/Text/Plain text.tmLanguage",
             initial_message=None,
-            # Catches "path", "shell", "startup_info", and "results_file_path"
+            # Catches "path", "shell", "startup_info", "wait"
             **kwargs):
 
         logger.debug("kwargs: %s", kwargs)
