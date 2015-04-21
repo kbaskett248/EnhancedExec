@@ -255,6 +255,7 @@ class EnhancedExecCommand(ExecCommand):
             file_regex="", line_regex="", encoding="utf-8",
             output_panel="exec", results_file_path=None, quiet=False,
             word_wrap=True, syntax="Packages/Text/Plain text.tmLanguage",
+            initial_message=None,
             # Catches "path", "shell", "startup_info", and "results_file_path"
             **kwargs):
 
@@ -304,9 +305,13 @@ class EnhancedExecCommand(ExecCommand):
 
         show_panel_on_build = sublime.load_settings(
             "Preferences.sublime-settings").get("show_panel_on_build", True)
-        if show_panel_on_build:
+        if show_panel_on_build and (not self.quiet):
             self.window.run_command("show_panel",
                                     {"panel": "output." + output_panel})
+            if initial_message is not None:
+                self.output_view.run_command('append',
+                                             {'characters': initial_message,
+                                              'force': True})
 
         merged_env = env.copy()
         if self.window.active_view():
