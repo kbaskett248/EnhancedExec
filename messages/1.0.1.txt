@@ -1,0 +1,2 @@
+Improvements to the way environment variables are handled. Namely, environment variable
+overrides can be included in the path override and they will be expanded correctly.
