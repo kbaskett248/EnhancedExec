@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import logging
 import os
 import sys
@@ -16,6 +17,16 @@ try:
 except ImportError as e:
     logger.error('Default package is not installed')
     raise e
+
+
+@contextmanager
+def updated_environ(env):
+    old_env = os.environ.copy()
+    os.environ.update(env)
+    try:
+        yield
+    finally:
+        os.environ = old_env
 
 
 class EnhancedAsyncProcess(AsyncProcess):
@@ -53,18 +64,12 @@ class EnhancedAsyncProcess(AsyncProcess):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        # Set temporary PATH to locate executable in cmd
-        if path:
-            old_path = os.environ["PATH"]
-            # The user decides in the build system whether he wants to append
-            # $PATH or tuck it at the front: "$PATH;C:\\new\\path",
-            # "C:\\new\\path;$PATH"
-            os.environ["PATH"] = os.path.expandvars(path)
-
-        proc_env = os.environ.copy()
-        proc_env.update(env)
-        for k, v in proc_env.items():
-            proc_env[k] = os.path.expandvars(v)
+        with updated_environ(env):
+            proc_env = os.environ.copy()
+            if path:
+                proc_env['PATH'] = path
+            for k, v in proc_env.items():
+                proc_env[k] = os.path.expandvars(v)
 
         if shell_cmd:
             if '<result_file>' in shell_cmd:
@@ -114,9 +119,6 @@ class EnhancedAsyncProcess(AsyncProcess):
 
             # Old style build system, just do what it asks
             self.proc = subprocess.Popen(cmd, env=proc_env, shell=shell)
-
-        if path:
-            os.environ["PATH"] = old_path
 
         if self.proc.stdout:
             threading.Thread(target=self.read_stdout).start()
@@ -169,8 +171,7 @@ class EnhancedAsyncProcess(AsyncProcess):
         self._delete_results_file = True
 
     def delete_results_file(self):
-        """
-        If a temporary results file was created by this process, it will be
+        """If a temporary results file was created by this process, it will be
         deleted here. The results_file_path attribute is also reset to None.
 
         Loop for 5 seconds attempting to delete the file in case there are any
@@ -257,8 +258,6 @@ class EnhancedExecCommand(ExecCommand):
             initial_message=None,
             # Catches "path", "shell", "startup_info", "wait"
             **kwargs):
-
-        logger.debug("kwargs: %s", kwargs)
 
         # clear the text_queue
         self.text_queue_lock.acquire()
