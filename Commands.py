@@ -21,12 +21,18 @@ except ImportError as e:
 
 @contextmanager
 def updated_environ(env):
+    """Context manager for temporary changes to the environment."""
     old_env = os.environ.copy()
-    os.environ.update(env)
+    for k, v in env.items():
+        os.environ[k] = v
     try:
         yield
     finally:
-        os.environ = old_env
+        for k in env.keys():
+            try:
+                os.environ[k] = old_env[k]
+            except KeyError:
+                del os.environ[k]
 
 
 class EnhancedAsyncProcess(AsyncProcess):
