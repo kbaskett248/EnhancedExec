@@ -1,0 +1,8 @@
+Updates to work with Sublime Text 3.1.
+
+Due to changes in the underlying build system, which this leverages,
+this build is incompatible with versions before 3.1.
+
+With ST 3.1, the build system code was refactored. This package
+relied on some of the details of that package, and since they no
+longer existed, this package broke.

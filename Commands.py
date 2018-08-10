@@ -127,10 +127,16 @@ class EnhancedAsyncProcess(AsyncProcess):
             self.proc = subprocess.Popen(cmd, env=proc_env, shell=shell)
 
         if self.proc.stdout:
-            threading.Thread(target=self.read_stdout).start()
+            threading.Thread(
+                target=self.read_fileno,
+                args=(self.proc.stdout.fileno(), True)
+            ).start()
 
         if self.proc.stderr:
-            threading.Thread(target=self.read_stderr).start()
+            threading.Thread(
+                target=self.read_fileno,
+                args=(self.proc.stderr.fileno(), False)
+            ).start()
 
         if self.results_file_path:
             threading.Thread(target=self.read_results_from_file).start()
@@ -145,7 +151,7 @@ class EnhancedAsyncProcess(AsyncProcess):
         process.
 
         """
-        with open(self.results_file_path, 'rb') as f:
+        with open(self.results_file_path, 'r') as f:
             while True:
                 data = f.read()
 
